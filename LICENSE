@@ -1,0 +1,129 @@
+Copyright (c) 2025 AurLemon. All rights reserved.
+
+                     PROPRIETARY LICENSE WITH LIMITED GRANTS
+
+This software and its source code are the exclusive property of AurLemon.
+Unauthorized copying, modification, distribution, or use of this software,
+in whole or in part, is strictly prohibited unless explicit written permission
+is granted by the Copyright Holder, except as expressly allowed below.
+
+
+1. DEFINITIONS
+
+   "Software" means the contents of this repository.
+   "Copyright Holder" means AurLemon.
+   "Hydroline Org" means the GitHub organization "Hydroline".
+   "Team Hydrlab" means the team named "Hydrlab" within the Hydroline Org.
+   "HydCraft Server Operators" means the legal entity, operators, or
+   administrators responsible for running the HydCraft Minecraft server.
+   "Permitted Parties" collectively refers to:
+     (a) the Copyright Holder (AurLemon);
+     (b) members of the Hydroline Org;
+     (c) members of Team Hydrlab; and
+     (d) HydCraft Server Operators.
+
+
+2. LIMITED GRANT OF RIGHTS TO PERMITTED PARTIES
+
+   Subject to the restrictions in Section 3, the Copyright Holder hereby
+   grants the Permitted Parties a non-exclusive, royalty-free, worldwide right to:
+
+     a) use, run, and operate the Software;
+     b) copy and modify the Software for internal use, development, testing,
+        and project-related purposes;
+     c) distribute and publish modifications and derivative works within the
+        Hydroline Org and to the public from Hydroline-owned repositories,
+        provided attribution to the Copyright Holder is retained in a
+        reasonably visible way;
+     d) merge changes into repository branches and modify the project
+        structure, features, or implementation ("project changes") for the
+        purposes of project development.
+
+   These rights explicitly permit collaborative development within the
+   Hydroline Org and by Team Hydrlab members, and permit HydCraft Server
+   Operators to use and adapt the Software to operate the HydCraft Minecraft
+   server (including distributing server-side packages necessary for players
+   to connect), subject to the limitations below.
+
+
+3. RESERVED RIGHTS AND LIMITATIONS
+
+   The following actions remain reserved and require explicit written permission
+   from the Copyright Holder:
+
+     a) assignment, sale, or transfer of the Copyright Holder's ownership
+        or rights in the Software;
+     b) relicensing the Software under any open-source license or granting
+        sublicenses that would allow third parties to remove or override the
+        Copyright Holder's attribution or restrictions;
+     c) commercial sale, sublicensing, or distribution of the Software or
+        derivative works to third parties outside of the Hydroline Org,
+        unless a separate written commercial license is granted;
+     d) claiming the Copyright Holder as an author of modifications in a way
+        that misrepresents original authorship or ownership;
+     e) any other actions that materially change the project's governance,
+        ownership, or licensing policy ("major governance or licensing changes").
+
+   For clarity: routine project modifications, feature additions, refactors,
+   and redistribution within Hydroline Org or by HydCraft Server Operators
+   to support server operations are permitted without additional permission.
+
+   All rights not expressly granted herein are reserved by the Copyright Holder.
+
+
+4. ATTRIBUTION AND NOTICES
+
+   All permitted distributions or public releases of the Software or derivative
+   works by Permitted Parties must include a copy of this license or a clear
+   notice referencing the Copyright Holder and this license.
+
+   When substantial functionality or content is added by others, those
+   contributors may add their own author notices, but must not remove or
+   obscure the Copyright Holder's notice.
+
+
+5. HYDCRAFT SERVER USE
+
+   HydCraft Server Operators are expressly allowed to:
+
+     - run and modify the Software to operate the HydCraft Minecraft server;
+     - distribute server-side packages, configuration files, and necessary
+       client assets to players for connecting to the HydCraft server;
+     - publish server-side changes for community use, provided attribution
+       to the Copyright Holder is retained and the publication does not
+       relicense or otherwise transfer rights beyond what is granted here.
+
+   This clause shall not be construed as a transfer or sublicense of ownership.
+
+
+6. LIMITED PRIVATE USE
+
+   The Copyright Holder may, at its sole discretion, grant additional limited
+   permissions to selected external collaborators for private or research use.
+   Such permissions must be explicitly provided in writing by the Copyright Holder.
+
+
+7. DISCLAIMER OF WARRANTY AND LIABILITY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED. TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT
+   HOLDER DISCLAIMS ALL WARRANTIES, INCLUDING BUT NOT LIMITED TO THE IMPLIED
+   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES,
+   OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE
+   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE, EXCEPT TO THE EXTENT REQUIRED
+   BY APPLICABLE LAW AND SUBJECT TO THE LIMITATIONS IN THIS LICENSE.
+
+
+8. GOVERNING LAW AND CONTACT
+
+   This license shall be governed by and construed in accordance with the
+   laws of the People's Republic of China.
+
+   For licensing questions or to request permissions beyond those granted here,
+   contact:
+
+       AurLemon
+       Email: aurlemoncn@gmail.com
+              2115386831@qq.com
