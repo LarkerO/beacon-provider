@@ -21,6 +21,7 @@ repositories {
 
 dependencies {
     api("org.slf4j:slf4j-api:2.0.13")
+    api("com.google.code.gson:gson:2.11.0")
     compileOnly(files(architecturyJarFile).builtBy(downloadArchitecturyJar))
     compileOnly(files(mtrCommonJar))
 }
