@@ -14,7 +14,10 @@ import com.hydroline.beacon.provider.mtr.MtrModels.RouteDetail;
 import com.hydroline.beacon.provider.mtr.MtrModels.RouteNode;
 import com.hydroline.beacon.provider.mtr.MtrModels.RouteSummary;
 import com.hydroline.beacon.provider.mtr.MtrModels.ScheduleEntry;
+import com.hydroline.beacon.provider.mtr.MtrModels.StationInfo;
+import com.hydroline.beacon.provider.mtr.MtrModels.StationPlatformInfo;
 import com.hydroline.beacon.provider.mtr.MtrModels.StationTimetable;
+import com.hydroline.beacon.provider.mtr.MtrModels.TrainStatus;
 import java.util.List;
 
 /**
@@ -82,11 +85,31 @@ public final class MtrJsonWriter {
         return array;
     }
 
+    public static JsonArray writeStations(List<StationInfo> stations) {
+        JsonArray array = new JsonArray();
+        if (stations != null) {
+            for (StationInfo station : stations) {
+                array.add(writeStationInfo(station));
+            }
+        }
+        return array;
+    }
+
     public static JsonArray writeFareAreas(List<FareAreaInfo> fareAreas) {
         JsonArray array = new JsonArray();
         if (fareAreas != null) {
             for (FareAreaInfo info : fareAreas) {
                 array.add(writeFareAreaInfo(info));
+            }
+        }
+        return array;
+    }
+
+    public static JsonArray writeTrainStatuses(List<TrainStatus> statuses) {
+        JsonArray array = new JsonArray();
+        if (statuses != null) {
+            for (TrainStatus status : statuses) {
+                array.add(writeTrainStatus(status));
             }
         }
         return array;
@@ -171,6 +194,33 @@ public final class MtrJsonWriter {
         return json;
     }
 
+    private static JsonObject writeStationInfo(StationInfo info) {
+        JsonObject json = new JsonObject();
+        json.addProperty("dimension", info.getDimensionId());
+        json.addProperty("stationId", info.getStationId());
+        json.addProperty("name", info.getName());
+        json.addProperty("zone", info.getZone());
+        if (info.getBounds() != null) {
+            json.add("bounds", writeBounds(info.getBounds()));
+        }
+        json.add("interchangeRouteIds", writeLongArray(info.getInterchangeRouteIds()));
+        JsonArray platforms = new JsonArray();
+        for (StationPlatformInfo platform : info.getPlatforms()) {
+            platforms.add(writeStationPlatform(platform));
+        }
+        json.add("platforms", platforms);
+        return json;
+    }
+
+    private static JsonObject writeStationPlatform(StationPlatformInfo platform) {
+        JsonObject json = new JsonObject();
+        json.addProperty("platformId", platform.getPlatformId());
+        json.addProperty("name", platform.getPlatformName());
+        json.add("routeIds", writeLongArray(platform.getRouteIds()));
+        platform.getDepotId().ifPresent(id -> json.addProperty("depotId", id));
+        return json;
+    }
+
     private static JsonObject writeRouteNode(RouteNode node) {
         JsonObject json = writeNodeInfo(node.getNode());
         json.addProperty("segmentCategory", node.getSegmentCategory());
@@ -207,6 +257,24 @@ public final class MtrJsonWriter {
         json.addProperty("trainCars", entry.getTrainCars());
         json.addProperty("currentStationIndex", entry.getCurrentStationIndex());
         entry.getDelayMillis().ifPresent(delay -> json.addProperty("delayMillis", delay));
+        return json;
+    }
+
+    private static JsonObject writeTrainStatus(TrainStatus status) {
+        JsonObject json = new JsonObject();
+        if (status.getTrainUuid() != null) {
+            json.addProperty("trainUuid", status.getTrainUuid().toString());
+        }
+        json.addProperty("dimension", status.getDimensionId());
+        json.addProperty("routeId", status.getRouteId());
+        status.getDepotId().ifPresent(id -> json.addProperty("depotId", id));
+        json.addProperty("transportMode", status.getTransportMode());
+        status.getCurrentStationId().ifPresent(id -> json.addProperty("currentStationId", id));
+        status.getNextStationId().ifPresent(id -> json.addProperty("nextStationId", id));
+        status.getDelayMillis().ifPresent(delay -> json.addProperty("delayMillis", delay));
+        json.addProperty("segmentCategory", status.getSegmentCategory());
+        json.addProperty("progress", status.getProgress());
+        status.getNode().ifPresent(node -> json.add("node", writeNodeInfo(node)));
         return json;
     }
 

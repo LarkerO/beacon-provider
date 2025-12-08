@@ -271,6 +271,85 @@ public final class MtrModels {
         }
     }
 
+    public static final class StationInfo {
+        private final String dimensionId;
+        private final long stationId;
+        private final String name;
+        private final int zone;
+        private final Bounds bounds;
+        private final List<Long> interchangeRouteIds;
+        private final List<StationPlatformInfo> platforms;
+
+        public StationInfo(String dimensionId, long stationId, String name, int zone, Bounds bounds,
+                           List<Long> interchangeRouteIds, List<StationPlatformInfo> platforms) {
+            this.dimensionId = Objects.requireNonNull(dimensionId, "dimensionId");
+            this.stationId = stationId;
+            this.name = name == null ? "" : name;
+            this.zone = zone;
+            this.bounds = bounds;
+            this.interchangeRouteIds = copyList(interchangeRouteIds);
+            this.platforms = copyList(platforms);
+        }
+
+        public String getDimensionId() {
+            return dimensionId;
+        }
+
+        public long getStationId() {
+            return stationId;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public int getZone() {
+            return zone;
+        }
+
+        public Bounds getBounds() {
+            return bounds;
+        }
+
+        public List<Long> getInterchangeRouteIds() {
+            return interchangeRouteIds;
+        }
+
+        public List<StationPlatformInfo> getPlatforms() {
+            return platforms;
+        }
+    }
+
+    public static final class StationPlatformInfo {
+        private final long platformId;
+        private final String platformName;
+        private final List<Long> routeIds;
+        private final Optional<Long> depotId;
+
+        public StationPlatformInfo(long platformId, String platformName, List<Long> routeIds, Long depotId) {
+            this.platformId = platformId;
+            this.platformName = platformName == null ? "" : platformName;
+            this.routeIds = copyList(routeIds);
+            this.depotId = Optional.ofNullable(depotId);
+        }
+
+        public long getPlatformId() {
+            return platformId;
+        }
+
+        public String getPlatformName() {
+            return platformName;
+        }
+
+        public List<Long> getRouteIds() {
+            return routeIds;
+        }
+
+        public Optional<Long> getDepotId() {
+            return depotId;
+        }
+    }
+
     public static final class RouteDetail {
         private final String dimensionId;
         private final long routeId;
@@ -480,6 +559,80 @@ public final class MtrModels {
 
         public Optional<Integer> getDelayMillis() {
             return delayMillis;
+        }
+    }
+
+    public static final class TrainStatus {
+        private final String dimensionId;
+        private final java.util.UUID trainUuid;
+        private final long routeId;
+        private final Optional<Long> depotId;
+        private final String transportMode;
+        private final Optional<Long> currentStationId;
+        private final Optional<Long> nextStationId;
+        private final Optional<Integer> delayMillis;
+        private final String segmentCategory;
+        private final double progress;
+        private final Optional<NodeInfo> node;
+
+        public TrainStatus(String dimensionId, java.util.UUID trainUuid, long routeId, Long depotId,
+                           String transportMode, Long currentStationId, Long nextStationId, Integer delayMillis,
+                           String segmentCategory, double progress, NodeInfo node) {
+            this.dimensionId = Objects.requireNonNull(dimensionId, "dimensionId");
+            this.trainUuid = trainUuid;
+            this.routeId = routeId;
+            this.depotId = Optional.ofNullable(depotId);
+            this.transportMode = transportMode == null ? "UNKNOWN" : transportMode;
+            this.currentStationId = Optional.ofNullable(currentStationId);
+            this.nextStationId = Optional.ofNullable(nextStationId);
+            this.delayMillis = Optional.ofNullable(delayMillis);
+            this.segmentCategory = segmentCategory == null ? "UNKNOWN" : segmentCategory;
+            this.progress = progress;
+            this.node = Optional.ofNullable(node);
+        }
+
+        public String getDimensionId() {
+            return dimensionId;
+        }
+
+        public java.util.UUID getTrainUuid() {
+            return trainUuid;
+        }
+
+        public long getRouteId() {
+            return routeId;
+        }
+
+        public Optional<Long> getDepotId() {
+            return depotId;
+        }
+
+        public String getTransportMode() {
+            return transportMode;
+        }
+
+        public Optional<Long> getCurrentStationId() {
+            return currentStationId;
+        }
+
+        public Optional<Long> getNextStationId() {
+            return nextStationId;
+        }
+
+        public Optional<Integer> getDelayMillis() {
+            return delayMillis;
+        }
+
+        public String getSegmentCategory() {
+            return segmentCategory;
+        }
+
+        public double getProgress() {
+            return progress;
+        }
+
+        public Optional<NodeInfo> getNode() {
+            return node;
         }
     }
 

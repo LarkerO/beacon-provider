@@ -5,6 +5,8 @@ import com.hydroline.beacon.provider.mtr.MtrModels.FareAreaInfo;
 import com.hydroline.beacon.provider.mtr.MtrModels.NodePage;
 import com.hydroline.beacon.provider.mtr.MtrModels.RouteDetail;
 import com.hydroline.beacon.provider.mtr.MtrModels.StationTimetable;
+import com.hydroline.beacon.provider.mtr.MtrModels.StationInfo;
+import com.hydroline.beacon.provider.mtr.MtrModels.TrainStatus;
 import com.hydroline.beacon.provider.mtr.MtrModels.DepotInfo;
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +34,12 @@ public interface MtrQueryGateway {
     NodePage fetchNodes(String dimensionId, String cursor, int limit);
 
     Optional<StationTimetable> fetchStationTimetable(String dimensionId, long stationId, Long platformId);
+
+    List<StationInfo> fetchStations(String dimensionId);
+
+    List<TrainStatus> fetchRouteTrains(String dimensionId, long routeId);
+
+    List<TrainStatus> fetchDepotTrains(String dimensionId, long depotId);
 
     MtrQueryGateway UNAVAILABLE = new MtrQueryGateway() {
         @Override
@@ -67,6 +75,21 @@ public interface MtrQueryGateway {
         @Override
         public Optional<StationTimetable> fetchStationTimetable(String dimensionId, long stationId, Long platformId) {
             return Optional.empty();
+        }
+
+        @Override
+        public List<StationInfo> fetchStations(String dimensionId) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<TrainStatus> fetchRouteTrains(String dimensionId, long routeId) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<TrainStatus> fetchDepotTrains(String dimensionId, long depotId) {
+            return Collections.emptyList();
         }
     };
 }

@@ -12,12 +12,17 @@ import com.hydroline.beacon.provider.mtr.MtrModels.RouteDetail;
 import com.hydroline.beacon.provider.mtr.MtrModels.RouteNode;
 import com.hydroline.beacon.provider.mtr.MtrModels.RouteSummary;
 import com.hydroline.beacon.provider.mtr.MtrModels.ScheduleEntry;
+import com.hydroline.beacon.provider.mtr.MtrModels.StationInfo;
+import com.hydroline.beacon.provider.mtr.MtrModels.StationPlatformInfo;
 import com.hydroline.beacon.provider.mtr.MtrModels.StationTimetable;
+import com.hydroline.beacon.provider.mtr.MtrModels.TrainStatus;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -27,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import mtr.data.AreaBase;
@@ -37,8 +43,12 @@ import mtr.data.Rail;
 import mtr.data.RailType;
 import mtr.data.RailwayData;
 import mtr.data.Route;
+import mtr.data.Route.RoutePlatform;
 import mtr.data.SavedRailBase;
+import mtr.data.Siding;
 import mtr.data.Station;
+import mtr.data.Train;
+import mtr.data.TrainServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +63,10 @@ public final class MtrDataMapper {
     private static final Field AREA_CORNER1 = locateField(AreaBase.class, "corner1");
     private static final Field AREA_CORNER2 = locateField(AreaBase.class, "corner2");
     private static final Field DATA_CACHE_BLOCK_POS_TO_STATION = locateField(DataCache.class, "blockPosToStation");
+    private static final Field SIDING_TRAINS = locateField(Siding.class, "trains");
+    private static final Field SIDING_DEPOT = locateField(Siding.class, "depot");
+    private static final Field TRAIN_SERVER_ROUTE_ID = locateField(TrainServer.class, "routeId");
+    private static final Field TRAIN_NEXT_STOPPING_INDEX = locateField(Train.class, "nextStoppingIndex");
 
     private MtrDataMapper() {
     }
@@ -111,6 +125,26 @@ public final class MtrDataMapper {
         return buildFareAreaInfos(context);
     }
 
+    public static List<StationInfo> buildStations(MtrDimensionSnapshot snapshot) {
+        DimensionContext context = DimensionContext.from(snapshot);
+        if (context == null) {
+            return Collections.emptyList();
+        }
+        List<StationInfo> stations = new ArrayList<>(context.stations.size());
+        context.stations.values().stream()
+            .sorted(Comparator.comparingLong(station -> station.id))
+            .forEach(station -> stations.add(new StationInfo(
+                context.dimensionId,
+                station.id,
+                safeName(station.name),
+                station.zone,
+                buildBoundsFromArea(station),
+                toSortedList(context.stationRouteIds.get(station.id)),
+                buildStationPlatforms(context, station)
+            )));
+        return stations;
+    }
+
     public static NodePage buildNodePage(MtrDimensionSnapshot snapshot, String cursor, int limit) {
         DimensionContext context = DimensionContext.from(snapshot);
         if (context == null) {
@@ -150,6 +184,34 @@ public final class MtrDataMapper {
             return Optional.empty();
         }
         return Optional.of(new StationTimetable(context.dimensionId, stationId, platforms));
+    }
+
+    public static List<TrainStatus> buildRouteTrains(MtrDimensionSnapshot snapshot, long routeId) {
+        DimensionContext context = DimensionContext.from(snapshot);
+        if (context == null) {
+            return Collections.emptyList();
+        }
+        List<TrainStatus> trains = collectTrainStatuses(context);
+        if (routeId <= 0 || trains.isEmpty()) {
+            return trains;
+        }
+        return trains.stream()
+            .filter(status -> status.getRouteId() == routeId)
+            .collect(Collectors.toList());
+    }
+
+    public static List<TrainStatus> buildDepotTrains(MtrDimensionSnapshot snapshot, long depotId) {
+        DimensionContext context = DimensionContext.from(snapshot);
+        if (context == null) {
+            return Collections.emptyList();
+        }
+        List<TrainStatus> trains = collectTrainStatuses(context);
+        if (depotId <= 0 || trains.isEmpty()) {
+            return trains;
+        }
+        return trains.stream()
+            .filter(status -> status.getDepotId().map(id -> id == depotId).orElse(false))
+            .collect(Collectors.toList());
     }
 
     private static List<RouteSummary> buildRouteSummaries(DimensionContext context) {
@@ -253,6 +315,126 @@ public final class MtrDataMapper {
             ));
         }
         return summaries;
+    }
+
+    private static List<TrainStatus> collectTrainStatuses(DimensionContext context) {
+        if (context.sidings.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<TrainStatus> statuses = new ArrayList<>();
+        for (Siding siding : context.sidings) {
+            Collection<TrainServer> sidingTrains = readTrainServers(siding);
+            if (sidingTrains.isEmpty()) {
+                continue;
+            }
+            Long depotId = resolveDepotId(siding);
+            for (TrainServer train : sidingTrains) {
+                TrainStatus status = toTrainStatus(context, train, depotId);
+                if (status != null) {
+                    statuses.add(status);
+                }
+            }
+        }
+        return statuses;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Collection<TrainServer> readTrainServers(Siding siding) {
+        Object value = readField(SIDING_TRAINS, siding);
+        if (value instanceof Collection<?>) {
+            Collection<?> collection = (Collection<?>) value;
+            if (collection.isEmpty()) {
+                return Collections.emptyList();
+            }
+            List<TrainServer> trains = new ArrayList<>(collection.size());
+            for (Object element : collection) {
+                if (element instanceof TrainServer) {
+                    trains.add((TrainServer) element);
+                }
+            }
+            return trains;
+        }
+        return Collections.emptyList();
+    }
+
+    private static Long resolveDepotId(Siding siding) {
+        Object value = readField(SIDING_DEPOT, siding);
+        if (value instanceof Depot) {
+            return ((Depot) value).id;
+        }
+        return null;
+    }
+
+    private static TrainStatus toTrainStatus(DimensionContext context, TrainServer train, Long depotId) {
+        long routeId = readLong(TRAIN_SERVER_ROUTE_ID, train);
+        if (routeId <= 0) {
+            return null;
+        }
+        List<Long> stationOrder = context.routeStationOrder.get(routeId);
+        int nextStopIndex = readInt(TRAIN_NEXT_STOPPING_INDEX, train, -1);
+        Long nextStationId = resolveStationFromIndex(stationOrder, nextStopIndex);
+        Long currentStationId = resolveStationFromIndex(stationOrder, nextStopIndex - 1);
+        String segmentCategory = train.getIsOnRoute() ? "ROUTE" : "DEPOT";
+        double progress = normalizeRailProgress(train);
+        UUID uuid = resolveTrainUuid(context.dimensionId, train);
+        return new TrainStatus(
+            context.dimensionId,
+            uuid,
+            routeId,
+            depotId,
+            describeTransportMode(train.transportMode),
+            currentStationId,
+            nextStationId,
+            null,
+            segmentCategory,
+            progress,
+            null
+        );
+    }
+
+    private static Long resolveStationFromIndex(List<Long> stations, int index) {
+        if (stations == null || stations.isEmpty() || index < 0 || index >= stations.size()) {
+            return null;
+        }
+        return stations.get(index);
+    }
+
+    private static double normalizeRailProgress(Train train) {
+        double progress = train.getRailProgress();
+        List<?> path = train.path;
+        if (path != null && !path.isEmpty()) {
+            double normalized = progress / path.size();
+            return Math.max(0D, Math.min(1D, normalized));
+        }
+        return 0D;
+    }
+
+    private static UUID resolveTrainUuid(String dimensionId, Train train) {
+        String key = train.trainId != null && !train.trainId.isEmpty()
+            ? train.trainId
+            : Long.toString(train.id);
+        String combined = dimensionId + ":" + key;
+        return UUID.nameUUIDFromBytes(combined.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static List<StationPlatformInfo> buildStationPlatforms(DimensionContext context, Station station) {
+        if (context.platforms.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<StationPlatformInfo> platforms = new ArrayList<>();
+        context.platforms.values().stream()
+            .filter(platform -> {
+                Station mapped = context.platformToStation.get(platform.id);
+                return mapped != null && mapped.id == station.id;
+            })
+            .sorted(Comparator.comparingLong(platform -> platform.id))
+            .forEach(platform -> platforms.add(new StationPlatformInfo(
+                platform.id,
+                safeName(platform.name),
+                toSortedList(context.platformRouteIds.get(platform.id)),
+                context.platformDepotIds.get(platform.id)
+            )));
+        return platforms;
     }
 
     private static List<NodeInfo> collectNodes(DimensionContext context) {
@@ -447,6 +629,22 @@ public final class MtrDataMapper {
         }
     }
 
+    private static long readLong(Field field, Object target) {
+        Object value = readField(field, target);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return 0L;
+    }
+
+    private static int readInt(Field field, Object target, int fallback) {
+        Object value = readField(field, target);
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return fallback;
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<Object, Station> extractBlockPosStationMap(DataCache cache) {
         Object value = readField(DATA_CACHE_BLOCK_POS_TO_STATION, cache);
@@ -465,7 +663,11 @@ public final class MtrDataMapper {
         final Map<Object, Station> blockPosToStation;
         final List<Route> routes;
         final List<Depot> depots;
+        final List<Siding> sidings;
         final Map<Long, Set<Long>> stationRouteIds;
+        final Map<Long, Set<Long>> platformRouteIds;
+        final Map<Long, Long> platformDepotIds;
+        final Map<Long, List<Long>> routeStationOrder;
 
         private DimensionContext(String dimensionId, RailwayData railwayData, DataCache cache) {
             this.dimensionId = dimensionId;
@@ -476,7 +678,11 @@ public final class MtrDataMapper {
             this.blockPosToStation = extractBlockPosStationMap(cache);
             this.routes = railwayData.routes != null ? new ArrayList<>(railwayData.routes) : Collections.emptyList();
             this.depots = railwayData.depots != null ? new ArrayList<>(railwayData.depots) : Collections.emptyList();
+            this.sidings = railwayData.sidings != null ? new ArrayList<>(railwayData.sidings) : Collections.emptyList();
             this.stationRouteIds = buildStationRouteIndex(routes, platformToStation);
+            this.platformRouteIds = buildPlatformRouteIndex(routes);
+            this.platformDepotIds = buildPlatformDepotIndex(depots);
+            this.routeStationOrder = buildRouteStationOrder(routes, platformToStation);
         }
 
         static DimensionContext from(MtrDimensionSnapshot snapshot) {
@@ -514,6 +720,64 @@ public final class MtrDataMapper {
             }
         }
         return index;
+    }
+
+    private static Map<Long, Set<Long>> buildPlatformRouteIndex(List<Route> routes) {
+        if (routes.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, Set<Long>> index = new HashMap<>();
+        for (Route route : routes) {
+            if (route.platformIds == null) {
+                continue;
+            }
+            for (Route.RoutePlatform reference : route.platformIds) {
+                index.computeIfAbsent(reference.platformId, key -> new LinkedHashSet<>()).add(route.id);
+            }
+        }
+        return index;
+    }
+
+    private static Map<Long, Long> buildPlatformDepotIndex(List<Depot> depots) {
+        if (depots.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, Long> index = new HashMap<>();
+        for (Depot depot : depots) {
+            if (depot.platformTimes == null || depot.platformTimes.isEmpty()) {
+                continue;
+            }
+            for (Map<Long, Float> platformTimes : depot.platformTimes.values()) {
+                if (platformTimes == null) {
+                    continue;
+                }
+                for (Long platformId : platformTimes.keySet()) {
+                    index.putIfAbsent(platformId, depot.id);
+                }
+            }
+        }
+        return index;
+    }
+
+    private static Map<Long, List<Long>> buildRouteStationOrder(List<Route> routes, Map<Long, Station> platformToStation) {
+        if (routes.isEmpty() || platformToStation.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, List<Long>> order = new HashMap<>();
+        for (Route route : routes) {
+            if (route.platformIds == null || route.platformIds.isEmpty()) {
+                continue;
+            }
+            List<Long> stations = new ArrayList<>();
+            for (RoutePlatform reference : route.platformIds) {
+                Station station = platformToStation.get(reference.platformId);
+                if (station != null) {
+                    stations.add(station.id);
+                }
+            }
+            order.put(route.id, stations);
+        }
+        return order;
     }
 
     private static final class NodeAccumulator {

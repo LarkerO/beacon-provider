@@ -245,13 +245,34 @@ fun Project.configureLoaderProject(config: LoaderProject) {
         isZip64 = true
     }
 
-    val architecturyContents = shadowJar.flatMap { jar ->
-        provider { zipTree(jar.archiveFile) }
+    val architecturyContentsDir = layout.buildDirectory.dir("architecturyContents/${project.name}")
+    val architecturyContentsCopy = tasks.register<Copy>("architecturyContents${project.name}") {
+        dependsOn(shadowJar)
+        from(provider { zipTree(shadowJar.get().archiveFile) })
+        into(architecturyContentsDir)
+        includeEmptyDirs = false
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+        val relocationPackage = architecturyRelocationBase.replace('.', '/')
+
+        filesMatching("architectury-common.mixins.json") {
+            filter {
+                it.replace("dev.architectury.mixin", "$architecturyRelocationBase.mixin")
+            }
+        }
+
+        listOf("architectury.common.json", "architectury-common-refmap.json").forEach { fileName ->
+            filesMatching(fileName) {
+                filter {
+                    it.replace("dev/architectury", relocationPackage)
+                }
+            }
+        }
     }
 
-tasks.named<RemapJarTask>("remapJar") {
-        dependsOn(shadowJar)
-        from(architecturyContents)
+    tasks.named<RemapJarTask>("remapJar") {
+        dependsOn(architecturyContentsCopy)
+        from(architecturyContentsDir)
     }
 
     tasks.withType<RemapJarTask>().configureEach {

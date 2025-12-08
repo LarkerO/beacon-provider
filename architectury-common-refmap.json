@@ -1,0 +1,22 @@
+{
+  "mappings": {
+    "dev/architectury/mixin/MixinLightningBolt": {
+      "Lnet/minecraft/world/level/Level;getEntities(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;)Ljava/util/List;": "Lnet/minecraft/class_1937;method_8333(Lnet/minecraft/class_1297;Lnet/minecraft/class_238;Ljava/util/function/Predicate;)Ljava/util/List;",
+      "tick": "Lnet/minecraft/class_1538;method_5773()V"
+    },
+    "dev/architectury/mixin/inject/MixinItem": {
+      "<init>": "Lnet/minecraft/class_1792;<init>(Lnet/minecraft/class_1792$class_1793;)V"
+    }
+  },
+  "data": {
+    "named:intermediary": {
+      "dev/architectury/mixin/MixinLightningBolt": {
+        "Lnet/minecraft/world/level/Level;getEntities(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;)Ljava/util/List;": "Lnet/minecraft/class_1937;method_8333(Lnet/minecraft/class_1297;Lnet/minecraft/class_238;Ljava/util/function/Predicate;)Ljava/util/List;",
+        "tick": "Lnet/minecraft/class_1538;method_5773()V"
+      },
+      "dev/architectury/mixin/inject/MixinItem": {
+        "<init>": "Lnet/minecraft/class_1792;<init>(Lnet/minecraft/class_1792$class_1793;)V"
+      }
+    }
+  }
+}

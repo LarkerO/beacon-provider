@@ -7,7 +7,9 @@ import com.hydroline.beacon.provider.mtr.MtrModels.DimensionOverview;
 import com.hydroline.beacon.provider.mtr.MtrModels.FareAreaInfo;
 import com.hydroline.beacon.provider.mtr.MtrModels.NodePage;
 import com.hydroline.beacon.provider.mtr.MtrModels.RouteDetail;
+import com.hydroline.beacon.provider.mtr.MtrModels.StationInfo;
 import com.hydroline.beacon.provider.mtr.MtrModels.StationTimetable;
+import com.hydroline.beacon.provider.mtr.MtrModels.TrainStatus;
 import com.hydroline.beacon.provider.mtr.MtrQueryGateway;
 import com.hydroline.beacon.provider.mtr.MtrRailwayDataAccess;
 import java.util.ArrayList;
@@ -82,6 +84,41 @@ public final class FabricMtrQueryGateway implements MtrQueryGateway {
         List<MtrDimensionSnapshot> snapshots = captureSnapshots();
         return findSnapshot(snapshots, dimensionId)
             .flatMap(snapshot -> MtrDataMapper.buildStationTimetable(snapshot, stationId, platformId));
+    }
+
+    @Override
+    public List<StationInfo> fetchStations(String dimensionId) {
+        List<MtrDimensionSnapshot> snapshots = captureSnapshots();
+        if (dimensionId == null || dimensionId.isEmpty()) {
+            return snapshots.stream()
+                .flatMap(snapshot -> MtrDataMapper.buildStations(snapshot).stream())
+                .collect(Collectors.toList());
+        }
+        return findSnapshot(snapshots, dimensionId)
+            .map(MtrDataMapper::buildStations)
+            .orElseGet(Collections::emptyList);
+    }
+
+    @Override
+    public List<TrainStatus> fetchRouteTrains(String dimensionId, long routeId) {
+        if (routeId <= 0) {
+            return Collections.emptyList();
+        }
+        List<MtrDimensionSnapshot> snapshots = captureSnapshots();
+        return findSnapshot(snapshots, dimensionId)
+            .map(snapshot -> MtrDataMapper.buildRouteTrains(snapshot, routeId))
+            .orElseGet(Collections::emptyList);
+    }
+
+    @Override
+    public List<TrainStatus> fetchDepotTrains(String dimensionId, long depotId) {
+        if (depotId <= 0) {
+            return Collections.emptyList();
+        }
+        List<MtrDimensionSnapshot> snapshots = captureSnapshots();
+        return findSnapshot(snapshots, dimensionId)
+            .map(snapshot -> MtrDataMapper.buildDepotTrains(snapshot, depotId))
+            .orElseGet(Collections::emptyList);
     }
 
     private List<MtrDimensionSnapshot> captureSnapshots() {
