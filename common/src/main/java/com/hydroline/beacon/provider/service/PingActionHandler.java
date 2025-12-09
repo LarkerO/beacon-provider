@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import com.hydroline.beacon.provider.protocol.BeaconMessage;
 import com.hydroline.beacon.provider.protocol.BeaconResponse;
 import com.hydroline.beacon.provider.protocol.ResultCode;
-import com.hydroline.beacon.provider.transport.PluginMessageContext;
+import com.hydroline.beacon.provider.transport.TransportContext;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -20,7 +20,7 @@ public final class PingActionHandler implements BeaconActionHandler {
     }
 
     @Override
-    public BeaconResponse handle(BeaconMessage message, PluginMessageContext context) {
+    public BeaconResponse handle(BeaconMessage message, TransportContext context) {
         JsonObject payload = new JsonObject();
         payload.addProperty("echo", message.getPayload().has("echo") ? message.getPayload().get("echo").getAsString() : "pong");
         payload.addProperty("receivedAt", context.getReceivedAt().toEpochMilli());

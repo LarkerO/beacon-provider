@@ -22,6 +22,7 @@ repositories {
 dependencies {
     api("org.slf4j:slf4j-api:2.0.13")
     api("com.google.code.gson:gson:2.11.0")
+    compileOnly("io.netty:netty-all:4.1.111.Final")
     compileOnly(files(architecturyJarFile).builtBy(downloadArchitecturyJar))
     compileOnly(files(mtrCommonJar))
 }

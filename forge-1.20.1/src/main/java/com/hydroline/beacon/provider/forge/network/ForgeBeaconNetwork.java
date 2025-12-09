@@ -1,5 +1,6 @@
 package com.hydroline.beacon.provider.forge.network;
 
+import com.hydroline.beacon.provider.gateway.BeaconGatewayManager;
 import com.hydroline.beacon.provider.protocol.BeaconResponse;
 import com.hydroline.beacon.provider.protocol.ChannelConstants;
 import com.hydroline.beacon.provider.protocol.MessageSerializer;
@@ -29,6 +30,7 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.network.ICustomPacket;
 
 /**
@@ -41,11 +43,13 @@ public final class ForgeBeaconNetwork {
     private final BeaconProviderService service;
     private final ChannelMessageRouter router;
     private final ForgeChannelMessenger messenger;
+    private final BeaconGatewayManager gatewayManager;
 
     public ForgeBeaconNetwork() {
         this.service = BeaconServiceFactory.createDefault();
         this.messenger = new ForgeChannelMessenger();
         this.router = new ChannelMessageRouter(service, messenger);
+        this.gatewayManager = new BeaconGatewayManager(service);
         MinecraftForge.EVENT_BUS.register(this);
     }
 
@@ -54,12 +58,14 @@ public final class ForgeBeaconNetwork {
         MinecraftServer server = event.getServer();
         messenger.setServer(server);
         MtrQueryRegistry.register(new ForgeMtrQueryGateway(() -> server));
+        gatewayManager.start(FMLPaths.CONFIGDIR.get());
     }
 
     @SubscribeEvent
     public void onServerStopped(ServerStoppedEvent event) {
         messenger.setServer(null);
         MtrQueryRegistry.register(MtrQueryGateway.UNAVAILABLE);
+        gatewayManager.stop();
     }
 
     @SubscribeEvent

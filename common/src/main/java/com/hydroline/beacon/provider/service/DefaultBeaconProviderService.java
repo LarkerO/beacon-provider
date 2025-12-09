@@ -4,7 +4,7 @@ import com.hydroline.beacon.provider.protocol.BeaconMessage;
 import com.hydroline.beacon.provider.protocol.BeaconResponse;
 import com.hydroline.beacon.provider.protocol.ChannelConstants;
 import com.hydroline.beacon.provider.protocol.ResultCode;
-import com.hydroline.beacon.provider.transport.PluginMessageContext;
+import com.hydroline.beacon.provider.transport.TransportContext;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +33,7 @@ public final class DefaultBeaconProviderService implements BeaconProviderService
     }
 
     @Override
-    public BeaconResponse handle(BeaconMessage request, PluginMessageContext context) {
+    public BeaconResponse handle(BeaconMessage request, TransportContext context) {
         if (request.getProtocolVersion() != ChannelConstants.PROTOCOL_VERSION) {
             return BeaconResponse.builder(request.getRequestId())
                 .result(ResultCode.INVALID_PAYLOAD)

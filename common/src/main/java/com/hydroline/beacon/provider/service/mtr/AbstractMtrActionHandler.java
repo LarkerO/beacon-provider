@@ -34,5 +34,5 @@ abstract class AbstractMtrActionHandler implements com.hydroline.beacon.provider
     }
 
     @Override
-    public abstract BeaconResponse handle(BeaconMessage message, com.hydroline.beacon.provider.transport.PluginMessageContext context);
+    public abstract BeaconResponse handle(BeaconMessage message, com.hydroline.beacon.provider.transport.TransportContext context);
 }

@@ -6,7 +6,7 @@ import com.hydroline.beacon.provider.mtr.MtrQueryGateway;
 import com.hydroline.beacon.provider.protocol.BeaconMessage;
 import com.hydroline.beacon.provider.protocol.BeaconResponse;
 import com.hydroline.beacon.provider.protocol.ResultCode;
-import com.hydroline.beacon.provider.transport.PluginMessageContext;
+import com.hydroline.beacon.provider.transport.TransportContext;
 
 public final class MtrGetStationTimetableActionHandler extends AbstractMtrActionHandler {
     public static final String ACTION = "mtr:get_station_timetable";
@@ -17,7 +17,7 @@ public final class MtrGetStationTimetableActionHandler extends AbstractMtrAction
     }
 
     @Override
-    public BeaconResponse handle(BeaconMessage message, PluginMessageContext context) {
+    public BeaconResponse handle(BeaconMessage message, TransportContext context) {
         MtrQueryGateway gateway = gateway();
         if (!gateway.isReady()) {
             return notReady(message.getRequestId());

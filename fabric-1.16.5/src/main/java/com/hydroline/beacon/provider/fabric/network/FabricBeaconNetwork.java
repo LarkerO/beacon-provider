@@ -1,6 +1,7 @@
 package com.hydroline.beacon.provider.fabric.network;
 
 import com.hydroline.beacon.provider.fabric.mtr.FabricMtrQueryGateway;
+import com.hydroline.beacon.provider.gateway.BeaconGatewayManager;
 import com.hydroline.beacon.provider.mtr.MtrQueryGateway;
 import com.hydroline.beacon.provider.mtr.MtrQueryRegistry;
 import com.hydroline.beacon.provider.protocol.BeaconResponse;
@@ -14,6 +15,7 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -28,11 +30,13 @@ public final class FabricBeaconNetwork {
     private final BeaconProviderService service;
     private final ChannelMessageRouter router;
     private final FabricChannelMessenger messenger;
+    private final BeaconGatewayManager gatewayManager;
 
     public FabricBeaconNetwork() {
         this.service = BeaconServiceFactory.createDefault();
         this.messenger = new FabricChannelMessenger();
         this.router = new ChannelMessageRouter(service, messenger);
+        this.gatewayManager = new BeaconGatewayManager(service);
         registerLifecycleHooks();
         registerChannelReceiver();
     }
@@ -41,10 +45,12 @@ public final class FabricBeaconNetwork {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             messenger.setServer(server);
             MtrQueryRegistry.register(new FabricMtrQueryGateway(() -> server));
+            gatewayManager.start(FabricLoader.getInstance().getConfigDir());
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             messenger.setServer(null);
             MtrQueryRegistry.register(MtrQueryGateway.UNAVAILABLE);
+            gatewayManager.stop();
         });
     }
 
