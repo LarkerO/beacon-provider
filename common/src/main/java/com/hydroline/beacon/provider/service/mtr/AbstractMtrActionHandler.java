@@ -33,6 +33,20 @@ abstract class AbstractMtrActionHandler implements com.hydroline.beacon.provider
             .build();
     }
 
+    protected BeaconResponse busy(String requestId, String reason) {
+        return BeaconResponse.builder(requestId)
+            .result(ResultCode.BUSY)
+            .message(reason)
+            .build();
+    }
+
+    protected BeaconResponse error(String requestId, String reason) {
+        return BeaconResponse.builder(requestId)
+            .result(ResultCode.ERROR)
+            .message(reason)
+            .build();
+    }
+
     @Override
     public abstract BeaconResponse handle(BeaconMessage message, com.hydroline.beacon.provider.transport.TransportContext context);
 }

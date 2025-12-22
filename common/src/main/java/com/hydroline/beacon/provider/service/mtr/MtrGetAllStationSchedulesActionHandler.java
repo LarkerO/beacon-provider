@@ -2,6 +2,7 @@ package com.hydroline.beacon.provider.service.mtr;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.hydroline.beacon.provider.BeaconProviderMod;
 import com.hydroline.beacon.provider.mtr.MtrDimensionSnapshot;
 import com.hydroline.beacon.provider.mtr.MtrJsonWriter;
 import com.hydroline.beacon.provider.mtr.MtrModels.DimensionOverview;
@@ -16,7 +17,6 @@ import com.hydroline.beacon.provider.protocol.BeaconMessage;
 import com.hydroline.beacon.provider.protocol.BeaconResponse;
 import com.hydroline.beacon.provider.transport.TransportContext;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 public final class MtrGetAllStationSchedulesActionHandler extends AbstractMtrActionHandler {
     public static final String ACTION = "mtr:get_all_station_schedules";
@@ -43,11 +45,36 @@ public final class MtrGetAllStationSchedulesActionHandler extends AbstractMtrAct
             ? message.getPayload().get("dimension").getAsString()
             : null;
 
+        try {
+            return MtrScheduleRequestQueue.submit(ACTION, () -> buildAllStationSchedulesResponse(
+                message.getRequestId(),
+                gateway,
+                dimension
+            ));
+        } catch (MtrScheduleRequestQueue.QueueRejectedException e) {
+            BeaconProviderMod.LOGGER.warn("Rejecting {} request", ACTION, e);
+            return busy(message.getRequestId(), "schedule requests are busy right now");
+        } catch (TimeoutException e) {
+            BeaconProviderMod.LOGGER.warn("Timeout waiting for {} queue", ACTION, e);
+            return busy(message.getRequestId(), "schedule service busy");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            BeaconProviderMod.LOGGER.warn("Interrupted while waiting for {} queue", ACTION, e);
+            return busy(message.getRequestId(), "schedule service interrupted");
+        } catch (ExecutionException e) {
+            BeaconProviderMod.LOGGER.error("Failed to build {} response", ACTION, e.getCause());
+            return error(message.getRequestId(), "failed to build station schedules");
+        }
+    }
+
+    private BeaconResponse buildAllStationSchedulesResponse(String requestId,
+            MtrQueryGateway gateway,
+            String dimension) {
         List<MtrDimensionSnapshot> snapshots = gateway.fetchSnapshots();
         List<DimensionOverview> overviews = gateway.fetchNetworkOverview();
         Set<String> dimensions = collectTargetDimensions(dimension, snapshots, overviews);
         if (dimensions.isEmpty()) {
-            return invalidPayload(message.getRequestId(), "no registered dimensions");
+            return invalidPayload(requestId, "no registered dimensions");
         }
 
         JsonArray dimensionArray = new JsonArray();
@@ -99,7 +126,7 @@ public final class MtrGetAllStationSchedulesActionHandler extends AbstractMtrAct
             responsePayload.addProperty("note", "no schedules available yet");
         }
         responsePayload.add("dimensions", dimensionArray);
-        return ok(message.getRequestId(), responsePayload);
+        return ok(requestId, responsePayload);
     }
 
     private static Set<String> collectTargetDimensions(String requestedDimension,
@@ -177,8 +204,14 @@ public final class MtrGetAllStationSchedulesActionHandler extends AbstractMtrAct
                 continue;
             }
             JsonArray entries = new JsonArray();
-            for (ScheduleEntry entry : platform.getEntries()) {
-                entries.add(MtrJsonWriter.writeScheduleEntry(entry, routeNames));
+            List<ScheduleEntry> scheduleEntries = platform.getEntries();
+            if (scheduleEntries != null) {
+                for (ScheduleEntry entry : scheduleEntries) {
+                    if (entry == null) {
+                        continue;
+                    }
+                    entries.add(MtrJsonWriter.writeScheduleEntry(entry, routeNames));
+                }
             }
             if (entries.size() == 0) {
                 continue;

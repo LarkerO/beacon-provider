@@ -2,6 +2,7 @@ package com.hydroline.beacon.provider.service.mtr;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.hydroline.beacon.provider.BeaconProviderMod;
 import com.hydroline.beacon.provider.mtr.MtrDimensionSnapshot;
 import com.hydroline.beacon.provider.mtr.MtrJsonWriter;
 import com.hydroline.beacon.provider.mtr.MtrModels.DimensionOverview;
@@ -15,8 +16,6 @@ import com.hydroline.beacon.provider.mtr.MtrQueryGateway;
 import com.hydroline.beacon.provider.protocol.BeaconMessage;
 import com.hydroline.beacon.provider.protocol.BeaconResponse;
 import com.hydroline.beacon.provider.transport.TransportContext;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -24,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 public final class MtrGetStationScheduleActionHandler extends AbstractMtrActionHandler {
     public static final String ACTION = "mtr:get_station_schedule";
@@ -47,13 +48,42 @@ public final class MtrGetStationScheduleActionHandler extends AbstractMtrActionH
         String dimension = payload.has("dimension") ? payload.get("dimension").getAsString() : null;
         Long platformId = payload.has("platformId") ? payload.get("platformId").getAsLong() : null;
 
+        try {
+            return MtrScheduleRequestQueue.submit(ACTION, () -> buildStationScheduleResponse(
+                message.getRequestId(),
+                gateway,
+                stationId,
+                dimension,
+                platformId
+            ));
+        } catch (MtrScheduleRequestQueue.QueueRejectedException e) {
+            BeaconProviderMod.LOGGER.warn("Rejecting {} request", ACTION, e);
+            return busy(message.getRequestId(), "schedule requests are busy right now");
+        } catch (TimeoutException e) {
+            BeaconProviderMod.LOGGER.warn("Timeout waiting for {} queue", ACTION, e);
+            return busy(message.getRequestId(), "schedule service busy");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            BeaconProviderMod.LOGGER.warn("Interrupted while waiting for {} queue", ACTION, e);
+            return busy(message.getRequestId(), "schedule service interrupted");
+        } catch (ExecutionException e) {
+            BeaconProviderMod.LOGGER.error("Failed to build {} response", ACTION, e.getCause());
+            return error(message.getRequestId(), "failed to build station timetable");
+        }
+    }
+
+    private BeaconResponse buildStationScheduleResponse(String requestId,
+            MtrQueryGateway gateway,
+            long stationId,
+            String dimension,
+            Long platformId) {
         List<MtrDimensionSnapshot> snapshots = gateway.fetchSnapshots();
-        Set<String> targetDimensions = collectTargetDimensions(dimension, snapshots, gateway.fetchNetworkOverview());
+        List<DimensionOverview> overviews = gateway.fetchNetworkOverview();
+        Set<String> targetDimensions = collectTargetDimensions(dimension, snapshots, overviews);
         if (targetDimensions.isEmpty()) {
-            return invalidPayload(message.getRequestId(), "no registered dimensions");
+            return invalidPayload(requestId, "no registered dimensions");
         }
 
-        List<DimensionOverview> overviews = gateway.fetchNetworkOverview();
         Map<String, Map<Long, String>> routeNamesByDimension = buildRouteNameIndex(overviews);
         Map<String, Map<Long, String>> platformNamesByDimension = buildPlatformNameIndex(gateway.fetchStations(null));
 
@@ -74,7 +104,7 @@ public final class MtrGetStationScheduleActionHandler extends AbstractMtrActionH
             timetablesArray.add(entry);
         }
         if (timetablesArray.size() == 0) {
-            return invalidPayload(message.getRequestId(), "station timetable unavailable");
+            return invalidPayload(requestId, "station timetable unavailable");
         }
 
         JsonObject responsePayload = new JsonObject();
@@ -84,7 +114,7 @@ public final class MtrGetStationScheduleActionHandler extends AbstractMtrActionH
             responsePayload.addProperty("dimension", dimension);
         }
         responsePayload.add("timetables", timetablesArray);
-        return ok(message.getRequestId(), responsePayload);
+        return ok(requestId, responsePayload);
     }
 
     private static Set<String> collectTargetDimensions(String requestedDimension,
@@ -155,15 +185,27 @@ public final class MtrGetStationScheduleActionHandler extends AbstractMtrActionH
             return array;
         }
         for (PlatformTimetable platform : platforms) {
+            if (platform == null) {
+                continue;
+            }
+            JsonArray entries = new JsonArray();
+            List<ScheduleEntry> scheduleEntries = platform.getEntries();
+            if (scheduleEntries != null) {
+                for (ScheduleEntry entry : scheduleEntries) {
+                    if (entry == null) {
+                        continue;
+                    }
+                    entries.add(MtrJsonWriter.writeScheduleEntry(entry, routeNames));
+                }
+            }
+            if (entries.size() == 0) {
+                continue;
+            }
             JsonObject platformJson = new JsonObject();
             platformJson.addProperty("platformId", platform.getPlatformId());
             String platformName = platformNames.get(platform.getPlatformId());
             if (platformName != null && !platformName.isEmpty()) {
                 platformJson.addProperty("platformName", platformName);
-            }
-            JsonArray entries = new JsonArray();
-            for (ScheduleEntry entry : platform.getEntries()) {
-                entries.add(MtrJsonWriter.writeScheduleEntry(entry, routeNames));
             }
             platformJson.add("entries", entries);
             array.add(platformJson);

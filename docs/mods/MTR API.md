@@ -109,6 +109,8 @@ public NetworkSnapshot loadSnapshot(ServerLevel level) {
 2. `getSchedulesAtPlatform(long platformId)`：直接返回单一站台（即站台编号）上的时刻表列表，最适合“指定站台”场景。
 3. 若需要延误信息，同时读取 `getTrainDelays()`（`routeId -> BlockPos -> TrainDelay`），用站台的 `midPos` 转为 `BlockPos` 进行匹配，即可在原始时刻表上叠加延误秒数。
 
+Beacon Provider 输出的 schedule JSON 结构会额外把 `routeName`、`route`（线路标记）、`color`（十进制）、`destination`、`circular`、`delayMillis` 等字段附加到每个 `ScheduleEntry` 上，客户端可以直接用这些字段渲染到站时间、线路标签、延误（`delayMillis`）和色彩。`mtr:get_station_schedule` 与 `mtr:get_all_station_schedules` 就是把这套内容打包发送给前端。
+
 ### 8.3 是否存在可识别每列车的唯一信息？能否定位列车？
 
 - **唯一标识**：`Train` 基类里有 `trainId`（字符串，通常来自侧线设置）、`sidingId`、`transportMode` 等字段，用于识别列车实例；若需要完全唯一，可组合 `trainId + depotId` 或直接给列车附加 UUID（`TrainServer.writeTrainPositions` 中就使用了 `UUID` 作为每节车厢/实体的 key）。
