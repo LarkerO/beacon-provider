@@ -22,18 +22,43 @@ plugins {
 }
 
 val architecturyVersion: String by project
+val architecturyVersion1165: String by project
 val architecturyRelocationBase = "com.hydroline.beacon.shaded.architectury"
 val checkoutsDir = layout.projectDirectory.dir("checkouts")
+
 val architecturyJarFileName = "architectury-$architecturyVersion.jar"
 val architecturyJar = layout.projectDirectory.file("checkouts/$architecturyJarFileName")
-val architecturyJarBaseUrl = "https://maven.architectury.dev/dev/architectury/architectury"
 val downloadArchitecturyJar = tasks.register("downloadArchitecturyJar") {
     outputs.file(architecturyJar)
     doLast {
         val targetFile = architecturyJar.asFile
         checkoutsDir.asFile.mkdirs()
         if (!targetFile.exists() || targetFile.length() == 0L) {
-            val url = "$architecturyJarBaseUrl/$architecturyVersion/$architecturyJarFileName"
+            val baseUrl = "https://maven.architectury.dev/dev/architectury/architectury"
+            val url = "$baseUrl/$architecturyVersion/$architecturyJarFileName"
+            logger.lifecycle("Downloading Architectury API jar from $url")
+            java.net.URL(url).openStream().use { input ->
+                targetFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            logger.lifecycle("Saved Architectury API jar to ${targetFile.absolutePath}")
+        } else {
+            logger.lifecycle("${targetFile.name} already exists; skipping download")
+        }
+    }
+}
+
+val architecturyJarFileName1165 = "architectury-$architecturyVersion1165.jar"
+val architecturyJar1165 = layout.projectDirectory.file("checkouts/$architecturyJarFileName1165")
+val downloadArchitecturyJar1165 = tasks.register("downloadArchitecturyJar1165") {
+    outputs.file(architecturyJar1165)
+    doLast {
+        val targetFile = architecturyJar1165.asFile
+        checkoutsDir.asFile.mkdirs()
+        if (!targetFile.exists() || targetFile.length() == 0L) {
+            val baseUrl = "https://maven.architectury.dev/me/shedaniel/architectury/architectury"
+            val url = "$baseUrl/$architecturyVersion1165/$architecturyJarFileName1165"
             logger.lifecycle("Downloading Architectury API jar from $url")
             java.net.URL(url).openStream().use { input ->
                 targetFile.outputStream().use { output ->
@@ -227,7 +252,11 @@ fun Project.configureLoaderProject(config: LoaderProject) {
         add("minecraft", "com.mojang:minecraft:${config.target.minecraftVersion}")
         add("mappings", loomExtension.officialMojangMappings())
         add("implementation", commonProject)
-        add("architecturyApi", files(architecturyJar).builtBy(downloadArchitecturyJar))
+        if (config.target.minecraftVersion == "1.16.5") {
+            add("architecturyApi", files(architecturyJar1165).builtBy(downloadArchitecturyJar1165))
+        } else {
+            add("architecturyApi", files(architecturyJar).builtBy(downloadArchitecturyJar))
+        }
         add("compileOnly", files(resolveMtrJar(config.target.minecraftVersion, config.loader)))
     }
 
@@ -239,7 +268,12 @@ fun Project.configureLoaderProject(config: LoaderProject) {
     val shadowJar = tasks.named<ShadowJar>("shadowJar") {
         archiveClassifier.set("shadow")
         configurations = listOf(architecturyApiConfiguration)
-        relocate("dev.architectury", architecturyRelocationBase)
+        if (config.target.minecraftVersion == "1.16.5") {
+            relocate("me.shedaniel.architectury", architecturyRelocationBase)
+            relocate("dev.architectury", architecturyRelocationBase)
+        } else {
+            relocate("dev.architectury", architecturyRelocationBase)
+        }
         exclude("architectury.accessWidener")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         isZip64 = true
@@ -257,14 +291,24 @@ fun Project.configureLoaderProject(config: LoaderProject) {
 
         filesMatching("architectury-common.mixins.json") {
             filter {
-                it.replace("dev.architectury.mixin", "$architecturyRelocationBase.mixin")
+                var content = it.replace("dev.architectury.mixin", "$architecturyRelocationBase.mixin")
+                if (config.target.minecraftVersion == "1.16.5") {
+                    content = content.replace("\"compatibilityLevel\": \"JAVA_16\"", "\"compatibilityLevel\": \"JAVA_8\"")
+                        .replace("\"compatibilityLevel\": \"JAVA_17\"", "\"compatibilityLevel\": \"JAVA_8\"")
+                        .replace("me.shedaniel.architectury.mixin", "$architecturyRelocationBase.mixin")
+                }
+                content
             }
         }
 
         listOf("architectury.common.json", "architectury-common-refmap.json").forEach { fileName ->
             filesMatching(fileName) {
                 filter {
-                    it.replace("dev/architectury", relocationPackage)
+                    var content = it.replace("dev/architectury", relocationPackage)
+                    if (config.target.minecraftVersion == "1.16.5") {
+                        content = content.replace("me/shedaniel/architectury", relocationPackage)
+                    }
+                    content
                 }
             }
         }
