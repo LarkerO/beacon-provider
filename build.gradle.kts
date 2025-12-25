@@ -57,7 +57,7 @@ val downloadArchitecturyJar1165 = tasks.register("downloadArchitecturyJar1165") 
         val targetFile = architecturyJar1165.asFile
         checkoutsDir.asFile.mkdirs()
         if (!targetFile.exists() || targetFile.length() == 0L) {
-            val baseUrl = "https://maven.architectury.dev/me/shedaniel/architectury/architectury"
+            val baseUrl = "https://maven.architectury.dev/me/shedaniel/architectury"
             val url = "$baseUrl/$architecturyVersion1165/$architecturyJarFileName1165"
             logger.lifecycle("Downloading Architectury API jar from $url")
             java.net.URL(url).openStream().use { input ->
