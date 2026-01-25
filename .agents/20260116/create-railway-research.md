@@ -4,8 +4,8 @@
 >
 > 本文基于本仓库内已提供的 jar 进行离线勘察：
 >
-> - Create 本体：`libs/create/g-req-core-create-6.0.8.jar`
-> - 在线地图示例 mod：`libs/create/create-track-map-2.1+mc1.20.1-neoforge.jar`（modId: `createtrackmap`）
+> - Create 本体：`libs/create/create-1.20.1-6.0.8.jar`
+> - 在线地图示例 mod：`libs/create/create-track-map-2.1-1.20.1-forge`（modId: `createtrackmap`）
 >
 > 结论先行：Create 并非“纯方块自由搭建、没有结构化数据”。Create 在服务端维护并持久化了 **TrackGraph（轨道图）**、**Train（列车）**、**SignalEdgeGroup（信号占用分组）**、**TrackEdgePoint（站台/信号等边上点）** 等结构化对象；因此接入侧应 **优先直接读取 Create 的铁路 SavedData/Manager**，而不是扫描世界方块去“重建节点/边”。
 
@@ -667,7 +667,7 @@ Create 没有强制线路，但 Hydroline 需要“线路视角”时，可采�
 
 ## 8. 附：本次勘察中确认的关键类索引（便于后续反查）
 
-Create（`g-req-core-create-6.0.8.jar`）：
+Create（`create-1.20.1-6.0.8.jar`）：
 
 - 全局/持久化
   - `com.simibubi.create.content.trains.RailwaySavedData`
@@ -696,7 +696,7 @@ Create（`g-req-core-create-6.0.8.jar`）：
   - `com.simibubi.create.content.trains.schedule.destination.DestinationInstruction`
   - `com.simibubi.create.content.trains.schedule.destination.ChangeTitleInstruction`
 
-CreateTrackMap（`create-track-map-2.1+mc1.20.1-neoforge.jar`）：
+CreateTrackMap（`create-track-map-2.1-1.20.1-forge`）：
 
 - `littlechasiu.ctm.TrackWatcher`（核心采集逻辑）
 - `littlechasiu.ctm.Server`（HTTP/SSE 输出：`/api/network` 等）
