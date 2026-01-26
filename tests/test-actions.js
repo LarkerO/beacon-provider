@@ -21,6 +21,8 @@ const OUTPUT_DIR = path.resolve(
   process.env.OUTPUT_DIR || path.join(__dirname, "output")
 );
 const ACTION_NAME = "mtr:get_railway_snapshot";
+const CREATE_NETWORK_ACTION = "create:get_network";
+const CREATE_REALTIME_ACTION = "create:get_realtime";
 const ROUTE_ID = Number(process.env.PROVIDER_MTR_ROUTE_ID || "0");
 const STATION_ID = parseEnvLong(process.env.PROVIDER_MTR_STATION_ID);
 const STATION_PLATFORM_ID = parseEnvLong(process.env.PROVIDER_MTR_PLATFORM_ID);
@@ -90,6 +92,8 @@ async function main() {
     await writeRouteTrainsOutput(client, dimensionSlug);
     await writeStationScheduleOutput(client, dimensionSlug);
     await writeDepotTrainsOutput(client, dimensionSlug);
+    await writeCreateNetworkOutput(client);
+    await writeCreateRealtimeOutput(client);
     // await writeAllStationSchedulesOutput(client, dimensionSlug);
     console.log(`Done. Files written to ${OUTPUT_DIR}`);
   } catch (err) {
@@ -166,6 +170,44 @@ async function writeAllStationSchedulesOutput(client, dimensionSlug) {
     OUTPUT_DIR,
     `mtr_all_station_schedules_${dimensionSlug}.json`
   );
+  await writeJson(target, response);
+}
+
+async function writeCreateNetworkOutput(client) {
+  const basePayload = {
+    includePolylines: true,
+  };
+  const response = await client.request(CREATE_NETWORK_ACTION, basePayload);
+  const target = path.join(OUTPUT_DIR, "create_network_all.json");
+  await writeJson(target, response);
+
+  const graphs = Array.isArray(response?.payload?.graphs)
+    ? response.payload.graphs
+    : [];
+  for (const graph of graphs) {
+    const graphId = graph?.graphId;
+    if (!graphId) {
+      continue;
+    }
+    const graphPayload = {
+      graphId,
+      includePolylines: true,
+    };
+    const graphResponse = await client.request(
+      CREATE_NETWORK_ACTION,
+      graphPayload
+    );
+    const graphTarget = path.join(
+      OUTPUT_DIR,
+      `create_network_${dimensionToSlug(graphId)}.json`
+    );
+    await writeJson(graphTarget, graphResponse);
+  }
+}
+
+async function writeCreateRealtimeOutput(client) {
+  const response = await client.request(CREATE_REALTIME_ACTION, {});
+  const target = path.join(OUTPUT_DIR, "create_realtime.json");
   await writeJson(target, response);
 }
 export class GatewayClient {

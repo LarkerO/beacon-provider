@@ -1,5 +1,7 @@
 package com.hydroline.beacon.provider.service;
 
+import com.hydroline.beacon.provider.service.create.CreateGetNetworkActionHandler;
+import com.hydroline.beacon.provider.service.create.CreateGetRealtimeActionHandler;
 import com.hydroline.beacon.provider.service.mtr.MtrGetRailwaySnapshotActionHandler;
 import com.hydroline.beacon.provider.service.mtr.MtrGetRouteTrainsActionHandler;
 import com.hydroline.beacon.provider.service.mtr.MtrGetStationScheduleActionHandler;
@@ -21,7 +23,9 @@ public final class BeaconServiceFactory {
             new MtrGetRouteTrainsActionHandler(),
             new MtrGetStationScheduleActionHandler(),
             new MtrGetAllStationSchedulesActionHandler(),
-            new MtrGetDepotTrainsActionHandler()
+            new MtrGetDepotTrainsActionHandler(),
+            new CreateGetNetworkActionHandler(),
+            new CreateGetRealtimeActionHandler()
         ));
     }
 }

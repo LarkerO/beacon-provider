@@ -252,6 +252,8 @@ fun Project.configureLoaderProject(config: LoaderProject) {
         add("minecraft", "com.mojang:minecraft:${config.target.minecraftVersion}")
         add("mappings", loomExtension.officialMojangMappings())
         add("implementation", commonProject)
+        add("implementation", "org.xerial:sqlite-jdbc:3.45.3.0")
+        add("architecturyApi", "org.xerial:sqlite-jdbc:3.45.3.0")
         if (config.target.minecraftVersion == "1.16.5") {
             add("architecturyApi", files(architecturyJar1165).builtBy(downloadArchitecturyJar1165))
         } else {

@@ -8,8 +8,11 @@ import com.hydroline.beacon.provider.service.BeaconProviderService;
 import com.hydroline.beacon.provider.service.BeaconServiceFactory;
 import com.hydroline.beacon.provider.transport.ChannelMessageRouter;
 import com.hydroline.beacon.provider.transport.ChannelMessenger;
+import com.hydroline.beacon.provider.create.CreateQueryGateway;
+import com.hydroline.beacon.provider.create.CreateQueryRegistry;
 import com.hydroline.beacon.provider.mtr.MtrQueryGateway;
 import com.hydroline.beacon.provider.mtr.MtrQueryRegistry;
+import com.hydroline.beacon.provider.forge.create.ForgeCreateQueryGateway;
 import com.hydroline.beacon.provider.forge.mtr.ForgeMtrQueryGateway;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -31,6 +34,7 @@ import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.network.ICustomPacket;
 
 /**
@@ -44,6 +48,7 @@ public final class ForgeBeaconNetwork {
     private final ChannelMessageRouter router;
     private final ForgeChannelMessenger messenger;
     private final BeaconGatewayManager gatewayManager;
+    private ForgeCreateQueryGateway createGateway;
 
     public ForgeBeaconNetwork() {
         this.service = BeaconServiceFactory.createDefault();
@@ -58,6 +63,13 @@ public final class ForgeBeaconNetwork {
         MinecraftServer server = event.getServer();
         messenger.setServer(server);
         MtrQueryRegistry.register(new ForgeMtrQueryGateway(() -> server));
+        if (ModList.get().isLoaded("create")) {
+            createGateway = new ForgeCreateQueryGateway(() -> server);
+            createGateway.start(FMLPaths.CONFIGDIR.get());
+            CreateQueryRegistry.register(createGateway);
+        } else {
+            CreateQueryRegistry.register(CreateQueryGateway.UNAVAILABLE);
+        }
         gatewayManager.start(FMLPaths.CONFIGDIR.get());
     }
 
@@ -65,6 +77,11 @@ public final class ForgeBeaconNetwork {
     public void onServerStopped(ServerStoppedEvent event) {
         messenger.setServer(null);
         MtrQueryRegistry.register(MtrQueryGateway.UNAVAILABLE);
+        CreateQueryRegistry.register(CreateQueryGateway.UNAVAILABLE);
+        if (createGateway != null) {
+            createGateway.stop();
+            createGateway = null;
+        }
         gatewayManager.stop();
     }
 

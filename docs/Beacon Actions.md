@@ -1,6 +1,6 @@
 # Beacon Actions
 
-Beacon Provider 只保留最小的 `action` 集合，专注于提供当前 Minecraft 世界的 MTR 数据快照：静态结构数据已经由 Bukkit 端通过 `world/mtr` 直接采集并缓存，Provider 只需要返回动态的 `RailwayData` 状态，供前端/Beacon 进行进一步的处理。
+Beacon Provider 只保留最小的 `action` 集合，专注于提供当前 Minecraft 世界的 MTR + Create 数据快照：静态结构数据由 Bukkit 端缓存或由 Provider 侧 SQLite 缓存，Provider 只需要返回动态的状态，供前端/Beacon 进行进一步的处理。
 
 ## 1. 可用 Action 一览
 
@@ -11,6 +11,8 @@ Beacon Provider 只保留最小的 `action` 集合，专注于提供当前 Minec
 | `mtr:get_route_trains` | 返回指定维度/线路上正在运行的列车列表及对应的轨道 ID（`railId`）。 | 可选：`dimension`、`routeId`（默认 `0` 表示所有线路）。 | `timestamp`、可选的 `dimension`/`routeId`、`trains`（含 `trainUuid`、`trainId`、`routeId`、`railId`、`currentStationId`、`nextStationId`、`progress`、`segmentCategory`、`delayMillis` 等） |
 | `mtr:get_station_schedule` | 查询某个车站（可选站台）的时刻表，按平台返回即将到达的列车记录（附带线路名称、可跨维度 aggregation）。 | 必需：`stationId`；可选：`dimension`、`platformId`。 | `timestamp`、`stationId`、可选 `dimension`、`timetables`（每项含 `dimension`、`platforms`：`platformId`、`platformName`，`entries` 包含 `routeId`、`routeName`、`route`（线路标签，如 `G23 To`）、`color`（十进制）、`destination`、`circular`、`arrivalMillis`、`trainCars`、`currentStationIndex`、`delayMillis`（若有）） |
 | `mtr:get_all_station_schedules` | 扫描所有维度的 station/platform，返回每个平台的时刻表。 | 可选：`dimension`（默认遍历所有已注册维度）。 | `timestamp`、`dimensions`（每项含 `dimension`、`stations`，站点带 `stationId`/`stationName` 和 `platforms`→`platformId`/`platformName` 与 `entries`，内容同 `mtr:get_station_schedule`） |
+| `create:get_network` | 返回 Create 轨道网络的静态结构数据（SQLite 缓存），包含轨道节点、边、站台/信号边界/分段等。 | 可选：`graphId`（不传则返回所有网络）；可选：`includePolylines`（默认 `true`）。 | `timestamp`、`graphs`、`nodes`、`edges`、`edgePolylines`（可选）、`stations`、`signalBoundaries`、`edgeSegments` |
+| `create:get_realtime` | 返回 Create 实时列车/区段占用信息（统一查询信道内存快照）。 | 无。 | `timestamp`、`trains`、`groups` |
 
 ## 2. 新 Action 的响应说明
 
@@ -34,7 +36,70 @@ Beacon Provider 只保留最小的 `action` 集合，专注于提供当前 Minec
 - 请求在队列耗尽或等待超时（默认 `beacon.scheduleRequestTimeoutMs=30000`）时会立刻返回 `ResultCode.BUSY`，客户端应当捕捉这一状态并适当退避再重试。通过 `-Dbeacon.scheduleRateLimitMs=500` 或 `-Dbeacon.scheduleRequestTimeoutMs=60000` 等方式可以调节节流器。
 - 该机制避免在 MTR 主线程读取 `StationTimetable` 时出现并发修改带来的 `IndexOutOfBoundsException`，也保障了 `platforms`/`entries` 读取到的结构尽可能稳定。
 
-## 3. 扩展与注意事项
+## 3. Create 动作说明（1.20.1）
+
+### 3.1 `create:get_network`
+
+**用途**：获取 Create 轨道网络的静态结构数据（Provider 侧缓存到 SQLite），可用于地图渲染/站台与信号边界展示。  
+**注意**：此 action 只读取缓存，不会触发 Create 的实时查询。
+
+请求 `payload`：
+
+```json
+{
+  "graphId": "可选，字符串；为空则返回全部网络",
+  "includePolylines": true
+}
+```
+
+响应 `payload`：
+
+- `timestamp`：毫秒时间戳。
+- `graphs`：轨道网络列表，每项：
+  - `graphId`：Create TrackGraph UUID。
+  - `checksum`：TrackGraph 校验值（用于变化检测）。
+  - `color`：Create 轨道网络颜色（整数）。
+  - `updatedAt`：写入缓存的时间戳。
+- `nodes`：轨道节点列表，每项：
+  - `graphId`、`netId`、`dimension`、`x/y/z`、`normal`（三元数组）、`yOffsetPixels`。
+- `edges`：轨道边列表，每项：
+  - `edgeId`（Provider 生成的稳定 ID）、`graphId`、`node1NetId`、`node2NetId`、`isTurn`、`isPortal`、`length`、`materialId`（可能为空）。
+- `edgePolylines`：仅当 `includePolylines=true` 返回，按 edge 分组的采样点：
+  - `edgeId`、`points`（数组，成员为 `[x,y,z]`）。
+- `stations`：站台点列表（Create GlobalStation）：
+  - `stationId`、`graphId`、`edgeId`、`position`、`name`、`dimension`、`x/y/z`。
+- `signalBoundaries`：信号边界点列表（Create SignalBoundary）：
+  - `boundaryId`、`graphId`、`edgeId`、`position`、`groupIdPrimary`、`groupIdSecondary`、`dimension`、`x/y/z`。
+- `edgeSegments`：信号分段列表（按边上信号切分）：
+  - `segmentId`、`edgeId`、`startPos`、`endPos`、`groupId`（用于区段占用映射）。
+
+### 3.2 `create:get_realtime`
+
+**用途**：获取 Create 列车实时位置与信号区段占用（内存快照），适合高频轮询。  
+**注意**：Provider 内部会对所有请求使用统一查询信道，避免 100 个请求触发 100 次 Create 查询。
+
+响应 `payload`：
+
+- `timestamp`：快照采集时间戳。
+- `trains`：列车状态列表，每项：
+  - `trainId`、`name`、`iconId`、`mapColorIndex`、`status`、`speed`、`targetSpeed`、`throttle`、`derailed`。
+  - `graphId`（所属网络）、`currentStationId`（若有）。
+  - `scheduleTitle`、`scheduleEntry`、`scheduleState`、`schedulePaused`、`scheduleCompleted`、`scheduleAuto`（若运行了 Create Schedule）。
+  - `positions`：列车在各维度的坐标列表（`dimension`、`x/y/z`）。
+  - `carriages`：车厢列表：
+    - `id`、`bogeySpacing`。
+    - `leading`/`trailing`：`edgeId`、`node1NetId`、`node2NetId`、`position`、`dimension`、`x/y/z`（基于 TravellingPoint）。
+    - `leadingBogey`/`trailingBogey`：`styleId`、`size`、`upsideDown`。
+- `groups`：信号区段占用列表（Create SignalEdgeGroup）：
+  - `groupId`、`color`、`reservedBoundaryId`、`trainIds`（占用该区段的列车 UUID 列表）。
+
+### 3.3 缓存与实时策略
+
+- 静态数据：写入 `config/beacon-provider/cache.db`，默认每 5 分钟按 `TrackGraph.checksum` 进行 diff 更新。
+- 实时数据：默认 500ms 刷新一次内存快照，所有 `create:get_realtime` 请求读取同一份快照。
+- 若服务器未加载 Create 或未就绪，Create action 会返回 `ResultCode.NOT_READY`。
+
+## 4. 扩展与注意事项
 
 - provider 仍保留 `PingAction` 用于连接检测，所有 MTR 逻辑通过 `MtrQueryGateway` 的快照缓存（`MtrSnapshotCache`）读取，防止在主线程上频繁重新构建 `RailwayData`。  
 - 如果需要覆盖维度筛选或补充额外的 `payload` 字段，可以在 Bukkit 端负责格式化，Provider 只负责将 `RailwayData` 原封不动地序列化为 MessagePack 并返回。  
