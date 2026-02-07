@@ -25,6 +25,7 @@ val architecturyVersion: String by project
 val architecturyVersion1165: String by project
 val architecturyRelocationBase = "com.hydroline.beacon.shaded.architectury"
 val sqliteRelocationBase = "com.hydroline.beacon.shaded.sqlite"
+val bouncyCastleRelocationBase = "com.hydroline.beacon.shaded.bouncycastle"
 val checkoutsDir = layout.projectDirectory.dir("checkouts")
 
 val architecturyJarFileName = "architectury-$architecturyVersion.jar"
@@ -311,6 +312,8 @@ fun Project.configureLoaderProject(config: LoaderProject) {
         add("implementation", commonProject)
         add("implementation", "org.xerial:sqlite-jdbc:3.45.3.0")
         add("architecturyApi", "org.xerial:sqlite-jdbc:3.45.3.0")
+        add("implementation", "org.bouncycastle:bcprov-jdk15on:1.70")
+        add("architecturyApi", "org.bouncycastle:bcprov-jdk15on:1.70")
         if (config.target.minecraftVersion == "1.16.5") {
             add("architecturyApi", files(architecturyJar1165).builtBy(downloadArchitecturyJar1165))
         } else {
@@ -336,12 +339,16 @@ fun Project.configureLoaderProject(config: LoaderProject) {
         if (config.target.minecraftVersion == "1.20.1") {
             relocate("org.sqlite", sqliteRelocationBase)
         }
+        relocate("org.bouncycastle", bouncyCastleRelocationBase)
         filesMatching("architectury.common.json") {
             filter {
                 it.replace(Regex("\"accessWidener\"\\s*:\\s*\"[^\"]+\"\\s*,?\\s*"), "")
             }
         }
         exclude("**/*.accessWidener")
+        exclude("META-INF/*.SF")
+        exclude("META-INF/*.DSA")
+        exclude("META-INF/*.RSA")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         isZip64 = true
     }

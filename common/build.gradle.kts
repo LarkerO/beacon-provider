@@ -23,6 +23,7 @@ dependencies {
     api("org.slf4j:slf4j-api:2.0.13")
     api("com.google.code.gson:gson:2.11.0")
     api("org.msgpack:msgpack-core:0.9.0")
+    api("org.bouncycastle:bcprov-jdk15on:1.70")
     compileOnly("io.netty:netty-all:4.1.111.Final")
     compileOnly(files(architecturyJarFile).builtBy(downloadArchitecturyJar))
     compileOnly(files(mtrCommonJar))
