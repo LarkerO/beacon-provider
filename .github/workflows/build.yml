@@ -2,17 +2,9 @@ name: Build
 
 on:
   push:
-    paths-ignore:
-      - ".agents/**"
-      - "docs/**"
-      - "**/*.md"
-      - "**/*.MD"
+    branches: ["**"]
   pull_request:
-    paths-ignore:
-      - ".agents/**"
-      - "docs/**"
-      - "**/*.md"
-      - "**/*.MD"
+  workflow_dispatch:
 
 jobs:
   build:
